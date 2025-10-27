@@ -38,11 +38,11 @@ export const CartPoleSimulation = () => {
   const neuralNetworkDecision = (state: number[], currentWeights = weights) => {
     const [angle, angularVelocity, cartPos, cartVel] = state;
     
-    // Normalize inputs
+    // Normalize inputs (cartPos is already normalized when passed in)
     const normalizedState = [
       angle / (Math.PI / 3),           // Normalize angle
       angularVelocity / 2,              // Normalize angular velocity
-      (cartPos - 200) / 200,            // Normalize position (-1 to 1)
+      cartPos,                          // Already normalized (-1 to 1)
       cartVel / 5                       // Normalize velocity
     ];
     
