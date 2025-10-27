@@ -79,9 +79,9 @@ export const CartPoleSimulation = () => {
     const newCartVelocity = prevCartVelocity + cartAcceleration * dt;
     const newCartPosition = prevCartPosition + newCartVelocity * dt;
 
-    // Check failure conditions - cart edges should hit the boundary lines
-    // Cart is 40px wide (±20 from center), boundaries are at x=50 and x=350
-    if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 70 || newCartPosition > 330) {
+    // Check failure conditions - cart edges should not exceed canvas bounds
+    // Canvas is 400px wide, cart is 40px wide (±20 from center)
+    if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 20 || newCartPosition > 380) {
       setFailed(true);
       setIsRunning(false);
       return;
