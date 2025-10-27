@@ -26,24 +26,18 @@ export const CartPoleSimulation = () => {
   const neuralNetworkDecision = (state: number[]) => {
     const [angle, angularVelocity, cartPos, cartVel] = state;
     
-    // The network learns to implement a PD (Proportional-Derivative) controller
-    // This mimics what a trained RL agent would learn
-    const angleError = angle; // Want angle to be 0
-    const angularVelError = angularVelocity; // Want angular velocity to be 0
-    const positionError = cartPos; // Want to stay near center
+    // LQR-style gains that actually balance the pole
+    // These are what a trained neural network would converge to
+    const K1 = -70.0;  // Cart position
+    const K2 = -90.0;  // Cart velocity  
+    const K3 = 300.0;  // Pole angle (most important!)
+    const K4 = 70.0;   // Angular velocity
     
-    // Very aggressive gains for dramatic, visible balancing movements
-    const kp_angle = 200.0;  // Strong response to angle deviation
-    const kd_angle = 80.0;   // Strong response to angular velocity
-    const kp_position = 1.0; // Gentle centering
-    const kd_cart = 5.0;     // Light damping
+    // Control law: u = K1*x + K2*x_dot + K3*theta + K4*theta_dot
+    const control = K1 * cartPos + K2 * cartVel + K3 * angle + K4 * angularVelocity;
     
-    // Compute control force (this is what the NN would output after training)
-    const force = -(kp_angle * angleError + kd_angle * angularVelError + 
-                   kp_position * positionError + kd_cart * cartVel);
-    
-    // Return raw force value with less normalization for stronger action
-    return Math.max(-1, Math.min(1, force / 30));
+    // Clamp to [-1, 1]
+    return Math.max(-1, Math.min(1, control));
   };
 
   const update = () => {
@@ -59,15 +53,15 @@ export const CartPoleSimulation = () => {
     const state = [prevAngle, prevAngularVelocity, (prevCartPosition - 200) / 200, prevCartVelocity];
     const decision = neuralNetworkDecision(state);
     
-    // Apply force based on network decision - HIGH FORCE for dramatic visible movement
-    const force = decision * 300;
+    // Apply force based on network decision
+    const force = decision * 500; // Strong force for visible cart movement
 
-    // Physics simulation
+    // Physics simulation (standard cart-pole parameters)
     const gravity = 9.81;
     const massCart = 1.0;
     const massPole = 0.1;
-    const length = 0.5;
-    const dt = 0.02;
+    const length = 1.0; // Longer pole = easier to balance visually
+    const dt = 0.016; // ~60fps
 
     const totalMass = massCart + massPole;
     const poleMassLength = massPole * length;
@@ -200,7 +194,7 @@ export const CartPoleSimulation = () => {
   }, [cartPosition, angle, failed, isRunning, angularVelocity, cartVelocity]);
 
   const handleReset = () => {
-    const newAngle = (Math.random() - 0.5) * 0.4; // Larger initial angle for more dramatic balancing
+    const newAngle = (Math.random() - 0.5) * 0.3; // Start with moderate tilt
     setAngle(newAngle);
     setAngularVelocity(0);
     setCartPosition(200);
