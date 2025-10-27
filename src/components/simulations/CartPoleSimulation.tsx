@@ -32,18 +32,18 @@ export const CartPoleSimulation = () => {
     const angularVelError = angularVelocity; // Want angular velocity to be 0
     const positionError = cartPos; // Want to stay near center
     
-    // Neural network effectively learns these gains through training
-    const kp_angle = 20.0;  // Proportional gain for angle
-    const kd_angle = 10.0;  // Derivative gain for angular velocity  
-    const kp_position = 0.5; // Keep cart near center
-    const kd_cart = 2.0;     // Dampen cart movement
+    // Much more aggressive gains for visible movement
+    const kp_angle = 80.0;  // Proportional gain for angle
+    const kd_angle = 40.0;  // Derivative gain for angular velocity  
+    const kp_position = 2.0; // Keep cart near center
+    const kd_cart = 8.0;     // Dampen cart movement
     
     // Compute control force (this is what the NN would output after training)
     const force = -(kp_angle * angleError + kd_angle * angularVelError + 
                    kp_position * positionError + kd_cart * cartVel);
     
     // Normalize to [-1, 1] range like a neural network output
-    return Math.tanh(force / 10);
+    return Math.tanh(force / 20);
   };
 
   const update = () => {
@@ -60,7 +60,7 @@ export const CartPoleSimulation = () => {
     const decision = neuralNetworkDecision(state);
     
     // Apply force based on network decision
-    const force = decision * 50;
+    const force = decision * 150; // Increased force for strong cart movement
 
     // Physics simulation
     const gravity = 9.81;
