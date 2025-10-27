@@ -323,7 +323,7 @@ export const CartPoleSimulation = () => {
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (mouseDownRef.current && !isRunning) {
+    if (mouseDownRef.current) {  // Allow dragging during simulation too
       const currentX = e.nativeEvent.offsetX;
       const delta = (currentX - mouseXRef.current) * 0.01;
       const newAngle = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, angleRef.current + delta));
@@ -421,9 +421,9 @@ export const CartPoleSimulation = () => {
             </Button>
           </div>
 
-          {!isRunning && !failed && (
+          {!isRunning && !failed && !isTraining && (
             <div className="p-3 bg-accent/10 rounded-lg border border-accent/30 text-xs text-muted-foreground">
-              💡 <strong>Tip:</strong> Drag the pole to change its angle before starting, or reset to randomize!
+              💡 <strong>Tip:</strong> Train the network first, then drag the pole anytime to challenge the AI!
             </div>
           )}
 
