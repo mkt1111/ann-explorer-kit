@@ -24,8 +24,8 @@ export const CartPoleSimulation = () => {
 
   // Simple neural network weights (tuned for cart-pole balancing)
   const [weights] = useState({
-    w1: [-1.2, -2.5, 0.8, -1.8], // More aggressive response to angle and angular velocity
-    w2: [3.5, 0.1],
+    w1: [-2.5, -5.0, 1.5, -3.5], // Increased weights for stronger response
+    w2: [7.0, 0.1],
   });
 
   const neuralNetworkDecision = (state: number[]) => {
@@ -47,23 +47,19 @@ export const CartPoleSimulation = () => {
     const prevCartPosition = cartPositionRef.current;
     const prevCartVelocity = cartVelocityRef.current;
 
-    console.log("Update called - Cart Position:", prevCartPosition, "Angle:", prevAngle);
-
     // Neural network makes decision
     const state = [prevAngle, prevAngularVelocity, (prevCartPosition - 200) / 200, prevCartVelocity];
     const decision = neuralNetworkDecision(state);
     
-    console.log("NN Decision:", decision, "Force:", decision * 20);
-    
-    // Apply force based on network decision
-    const force = decision * 20;
+    // Apply force based on network decision - INCREASED FORCE FOR VISIBLE MOVEMENT
+    const force = decision * 100; // Increased from 20 to 100
 
     // Physics simulation
     const gravity = 9.81;
     const massCart = 1.0;
     const massPole = 0.1;
     const length = 0.5;
-    const dt = 0.02;
+    const dt = 0.05; // Increased timestep for faster simulation
 
     const totalMass = massCart + massPole;
     const poleMassLength = massPole * length;
@@ -93,8 +89,6 @@ export const CartPoleSimulation = () => {
     angularVelocityRef.current = newAngularVelocity;
     cartPositionRef.current = newCartPosition;
     cartVelocityRef.current = newCartVelocity;
-
-    console.log("New Cart Position:", newCartPosition, "New Angle:", newAngle);
 
     // Update state for rendering
     setAngle(newAngle);
