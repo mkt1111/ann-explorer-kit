@@ -337,6 +337,36 @@ export const CartPoleSimulation = () => {
     mouseDownRef.current = false;
   };
 
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (rect) {
+      mouseDownRef.current = true;
+      mouseXRef.current = touch.clientX - rect.left;
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (mouseDownRef.current && e.touches.length > 0) {
+      const touch = e.touches[0];
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const currentX = touch.clientX - rect.left;
+        const delta = (currentX - mouseXRef.current) * 0.01;
+        const newAngle = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, angleRef.current + delta));
+        setAngle(newAngle);
+        angleRef.current = newAngle;
+        mouseXRef.current = currentX;
+      }
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
+    mouseDownRef.current = false;
+  };
+
   return (
     <Card className="p-8 border-border bg-card/50 backdrop-blur">
       <div className="mb-8 space-y-4">
@@ -506,7 +536,11 @@ export const CartPoleSimulation = () => {
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
-            className="w-full max-w-md border border-border rounded-lg shadow-glow-sm cursor-grab active:cursor-grabbing"
+            onTouchStart={handleCanvasTouchStart}
+            onTouchMove={handleCanvasTouchMove}
+            onTouchEnd={handleCanvasTouchEnd}
+            onTouchCancel={handleCanvasTouchEnd}
+            className="w-full max-w-md border border-border rounded-lg shadow-glow-sm cursor-grab active:cursor-grabbing touch-none"
           />
         </div>
       </div>
