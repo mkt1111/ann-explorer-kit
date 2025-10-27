@@ -15,6 +15,12 @@ export const CartPoleSimulation = () => {
   const animationRef = useRef<number>();
   const mouseDownRef = useRef(false);
   const mouseXRef = useRef(0);
+  
+  // Use refs to store current values for physics simulation
+  const angleRef = useRef(0);
+  const angularVelocityRef = useRef(0);
+  const cartPositionRef = useRef(200);
+  const cartVelocityRef = useRef(0);
 
   // Simple neural network weights (tuned for cart-pole balancing)
   const [weights] = useState({
@@ -35,61 +41,61 @@ export const CartPoleSimulation = () => {
   const update = () => {
     if (failed) return;
 
-    setAngle(prevAngle => {
-      setAngularVelocity(prevAngularVelocity => {
-        setCartPosition(prevCartPosition => {
-          setCartVelocity(prevCartVelocity => {
-            // Neural network makes decision
-            const state = [prevAngle, prevAngularVelocity, (prevCartPosition - 200) / 200, prevCartVelocity];
-            const decision = neuralNetworkDecision(state);
-            
-            // Apply force based on network decision
-            const force = decision * 20;
+    // Get current values from refs
+    const prevAngle = angleRef.current;
+    const prevAngularVelocity = angularVelocityRef.current;
+    const prevCartPosition = cartPositionRef.current;
+    const prevCartVelocity = cartVelocityRef.current;
 
-            // Physics simulation
-            const gravity = 9.81;
-            const massCart = 1.0;
-            const massPole = 0.1;
-            const length = 0.5;
-            const dt = 0.02;
+    // Neural network makes decision
+    const state = [prevAngle, prevAngularVelocity, (prevCartPosition - 200) / 200, prevCartVelocity];
+    const decision = neuralNetworkDecision(state);
+    
+    // Apply force based on network decision
+    const force = decision * 20;
 
-            const totalMass = massCart + massPole;
-            const poleMassLength = massPole * length;
+    // Physics simulation
+    const gravity = 9.81;
+    const massCart = 1.0;
+    const massPole = 0.1;
+    const length = 0.5;
+    const dt = 0.02;
 
-            const temp = (force + poleMassLength * prevAngularVelocity * prevAngularVelocity * Math.sin(prevAngle)) / totalMass;
-            const angularAcceleration =
-              (gravity * Math.sin(prevAngle) - Math.cos(prevAngle) * temp) /
-              (length * (4.0 / 3.0 - (massPole * Math.cos(prevAngle) * Math.cos(prevAngle)) / totalMass));
-            
-            const cartAcceleration = temp - (poleMassLength * angularAcceleration * Math.cos(prevAngle)) / totalMass;
+    const totalMass = massCart + massPole;
+    const poleMassLength = massPole * length;
 
-            // Update velocities and positions
-            const newAngularVelocity = prevAngularVelocity + angularAcceleration * dt;
-            const newAngle = prevAngle + newAngularVelocity * dt;
-            const newCartVelocity = prevCartVelocity + cartAcceleration * dt;
-            const newCartPosition = prevCartPosition + newCartVelocity * dt;
+    const temp = (force + poleMassLength * prevAngularVelocity * prevAngularVelocity * Math.sin(prevAngle)) / totalMass;
+    const angularAcceleration =
+      (gravity * Math.sin(prevAngle) - Math.cos(prevAngle) * temp) /
+      (length * (4.0 / 3.0 - (massPole * Math.cos(prevAngle) * Math.cos(prevAngle)) / totalMass));
+    
+    const cartAcceleration = temp - (poleMassLength * angularAcceleration * Math.cos(prevAngle)) / totalMass;
 
-            // Check failure conditions
-            if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 50 || newCartPosition > 350) {
-              setFailed(true);
-              setIsRunning(false);
-              return prevCartVelocity;
-            }
+    // Calculate new values
+    const newAngularVelocity = prevAngularVelocity + angularAcceleration * dt;
+    const newAngle = prevAngle + newAngularVelocity * dt;
+    const newCartVelocity = prevCartVelocity + cartAcceleration * dt;
+    const newCartPosition = prevCartPosition + newCartVelocity * dt;
 
-            // Update other states
-            setAngle(newAngle);
-            setAngularVelocity(newAngularVelocity);
-            setCartPosition(newCartPosition);
-            setScore(s => s + 1);
-            
-            return newCartVelocity;
-          });
-          return prevCartPosition;
-        });
-        return prevAngularVelocity;
-      });
-      return prevAngle;
-    });
+    // Check failure conditions
+    if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 50 || newCartPosition > 350) {
+      setFailed(true);
+      setIsRunning(false);
+      return;
+    }
+
+    // Update refs with new values
+    angleRef.current = newAngle;
+    angularVelocityRef.current = newAngularVelocity;
+    cartPositionRef.current = newCartPosition;
+    cartVelocityRef.current = newCartVelocity;
+
+    // Update state for rendering
+    setAngle(newAngle);
+    setAngularVelocity(newAngularVelocity);
+    setCartPosition(newCartPosition);
+    setCartVelocity(newCartVelocity);
+    setScore(s => s + 1);
   };
 
   useEffect(() => {
@@ -186,12 +192,19 @@ export const CartPoleSimulation = () => {
   }, [cartPosition, angle, failed, isRunning, angularVelocity, cartVelocity]);
 
   const handleReset = () => {
-    setAngle((Math.random() - 0.5) * 0.2);
+    const newAngle = (Math.random() - 0.5) * 0.2;
+    setAngle(newAngle);
     setAngularVelocity(0);
     setCartPosition(200);
     setCartVelocity(0);
     setScore(0);
     setFailed(false);
+    
+    // Update refs too
+    angleRef.current = newAngle;
+    angularVelocityRef.current = 0;
+    cartPositionRef.current = 200;
+    cartVelocityRef.current = 0;
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -203,7 +216,9 @@ export const CartPoleSimulation = () => {
     if (mouseDownRef.current && !isRunning) {
       const currentX = e.nativeEvent.offsetX;
       const delta = (currentX - mouseXRef.current) * 0.01;
-      setAngle(prev => Math.max(-Math.PI / 3, Math.min(Math.PI / 3, prev + delta)));
+      const newAngle = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, angleRef.current + delta));
+      setAngle(newAngle);
+      angleRef.current = newAngle;
       mouseXRef.current = currentX;
     }
   };
