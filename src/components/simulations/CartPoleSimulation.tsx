@@ -47,9 +47,13 @@ export const CartPoleSimulation = () => {
     const prevCartPosition = cartPositionRef.current;
     const prevCartVelocity = cartVelocityRef.current;
 
+    console.log("Update called - Cart Position:", prevCartPosition, "Angle:", prevAngle);
+
     // Neural network makes decision
     const state = [prevAngle, prevAngularVelocity, (prevCartPosition - 200) / 200, prevCartVelocity];
     const decision = neuralNetworkDecision(state);
+    
+    console.log("NN Decision:", decision, "Force:", decision * 20);
     
     // Apply force based on network decision
     const force = decision * 20;
@@ -89,6 +93,8 @@ export const CartPoleSimulation = () => {
     angularVelocityRef.current = newAngularVelocity;
     cartPositionRef.current = newCartPosition;
     cartVelocityRef.current = newCartVelocity;
+
+    console.log("New Cart Position:", newCartPosition, "New Angle:", newAngle);
 
     // Update state for rendering
     setAngle(newAngle);
