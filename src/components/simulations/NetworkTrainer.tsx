@@ -3,7 +3,63 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Pause, RotateCcw } from "lucide-react";
+
+type Operation = "XOR" | "AND" | "OR" | "NAND" | "NOR";
+
+const operationInfo = {
+  XOR: {
+    description: "Exclusive OR - outputs 1 only when inputs are different",
+    data: [
+      { input: [0, 0], target: 0 },
+      { input: [0, 1], target: 1 },
+      { input: [1, 0], target: 1 },
+      { input: [1, 1], target: 0 },
+    ],
+    explanation: "XOR is the classic non-linearly separable problem that single-layer perceptrons cannot solve. This demonstrates why we need hidden layers and non-linear activation functions."
+  },
+  AND: {
+    description: "Logical AND - outputs 1 only when both inputs are 1",
+    data: [
+      { input: [0, 0], target: 0 },
+      { input: [0, 1], target: 0 },
+      { input: [1, 0], target: 0 },
+      { input: [1, 1], target: 1 },
+    ],
+    explanation: "AND is linearly separable - a single neuron can learn this easily. Notice how quickly it converges compared to XOR."
+  },
+  OR: {
+    description: "Logical OR - outputs 1 when at least one input is 1",
+    data: [
+      { input: [0, 0], target: 0 },
+      { input: [0, 1], target: 1 },
+      { input: [1, 0], target: 1 },
+      { input: [1, 1], target: 1 },
+    ],
+    explanation: "OR is also linearly separable. The decision boundary is a straight line dividing the input space."
+  },
+  NAND: {
+    description: "NOT AND - outputs 0 only when both inputs are 1",
+    data: [
+      { input: [0, 0], target: 1 },
+      { input: [0, 1], target: 1 },
+      { input: [1, 0], target: 1 },
+      { input: [1, 1], target: 0 },
+    ],
+    explanation: "NAND is universal - any logical function can be built using only NAND gates. It's linearly separable and trains quickly."
+  },
+  NOR: {
+    description: "NOT OR - outputs 1 only when both inputs are 0",
+    data: [
+      { input: [0, 0], target: 1 },
+      { input: [0, 1], target: 0 },
+      { input: [1, 0], target: 0 },
+      { input: [1, 1], target: 0 },
+    ],
+    explanation: "NOR is also universal like NAND. Watch how the network creates a decision boundary in the bottom-left corner."
+  }
+};
 
 export const NetworkTrainer = () => {
   const [isTraining, setIsTraining] = useState(false);
@@ -11,16 +67,10 @@ export const NetworkTrainer = () => {
   const [loss, setLoss] = useState(1.0);
   const [learningRate, setLearningRate] = useState(0.1);
   const [weights, setWeights] = useState([0.5, 0.5, 0.5]);
+  const [operation, setOperation] = useState<Operation>("XOR");
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
 
-  // Simple XOR problem
-  const trainingData = [
-    { input: [0, 0], target: 0 },
-    { input: [0, 1], target: 1 },
-    { input: [1, 0], target: 1 },
-    { input: [1, 1], target: 0 },
-  ];
+  const trainingData = operationInfo[operation].data;
 
   const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
@@ -138,12 +188,53 @@ export const NetworkTrainer = () => {
       <div className="mb-8">
         <h3 className="text-2xl font-bold mb-2">Network Training Visualizer</h3>
         <p className="text-muted-foreground">
-          Watch a neural network learn the XOR problem in real-time. Adjust learning rate and observe how it affects training.
+          Watch a neural network learn logical operations in real-time. Select different operations to see how the network adapts.
+        </p>
+      </div>
+
+      <div className="mb-6 p-4 bg-primary/10 rounded-lg border border-primary/30">
+        <h4 className="text-sm font-semibold text-primary mb-2">What you're seeing:</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          The <strong>colored background</strong> represents the network's predictions across the entire input space (0 to 1 for each input). 
+          The <strong>colored dots</strong> are training examples with their expected outputs. 
+          <strong className="text-primary"> Green rings</strong> indicate correct predictions, <strong className="text-destructive">red rings</strong> show errors.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          As training progresses, you'll see the background colors shift as the network adjusts its <strong>decision boundary</strong> to correctly classify all training points.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Operation</Label>
+            <Select 
+              value={operation} 
+              onValueChange={(v: Operation) => {
+                setOperation(v);
+                handleReset();
+              }}
+              disabled={isTraining}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(operationInfo) as Operation[]).map(op => (
+                  <SelectItem key={op} value={op}>
+                    {op} - {operationInfo[op].description}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="p-3 bg-accent/5 rounded-lg border border-accent/20">
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">{operation}:</strong> {operationInfo[operation].explanation}
+            </p>
+          </div>
+
           <div>
             <Label className="text-sm font-medium mb-2 block">
               Learning Rate: {learningRate.toFixed(2)}
@@ -200,13 +291,29 @@ export const NetworkTrainer = () => {
           </div>
 
           <div className="space-y-2 p-4 bg-accent/10 rounded-lg border border-accent/30">
-            <h4 className="text-sm font-semibold text-accent">How it works:</h4>
+            <h4 className="text-sm font-semibold text-accent">Training Process:</h4>
             <ul className="text-xs space-y-1 text-muted-foreground">
-              <li>• Colored dots represent training data (XOR problem)</li>
-              <li>• Background shows network's current predictions</li>
-              <li>• Green rings = correct predictions, Red = incorrect</li>
-              <li>• Watch the decision boundary evolve as it learns</li>
+              <li>• <strong>Forward Pass:</strong> Network makes predictions for all training examples</li>
+              <li>• <strong>Calculate Error:</strong> Compare predictions to expected outputs</li>
+              <li>• <strong>Backpropagation:</strong> Calculate how much each weight contributed to the error</li>
+              <li>• <strong>Update Weights:</strong> Adjust weights using gradient descent (learning rate × gradient)</li>
+              <li>• <strong>Repeat:</strong> Process continues until error is minimized</li>
             </ul>
+          </div>
+
+          <div className="space-y-2 p-4 bg-muted/30 rounded-lg border border-border">
+            <h4 className="text-sm font-semibold">Expected Outputs:</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {trainingData.map((data, i) => (
+                <div key={i} className="flex items-center gap-2 p-2 bg-background/50 rounded">
+                  <span className="text-muted-foreground">
+                    [{data.input[0]}, {data.input[1]}]
+                  </span>
+                  <span className="text-foreground">→</span>
+                  <span className="font-bold text-primary">{data.target}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

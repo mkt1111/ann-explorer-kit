@@ -3,6 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { Hero } from "@/components/Hero";
 import { BasicsSection } from "@/components/BasicsSection";
 import { SimulationsSection } from "@/components/SimulationsSection";
+import { BackpropagationSection } from "@/components/BackpropagationSection";
 import { LearnMoreSection } from "@/components/LearnMoreSection";
 import { AboutAISection } from "@/components/AboutAISection";
 
@@ -51,6 +52,7 @@ const Index = () => {
       <Hero onExplore={() => handleNavigate("basics")} />
       <BasicsSection />
       <SimulationsSection />
+      <BackpropagationSection />
       <LearnMoreSection />
       <AboutAISection />
       

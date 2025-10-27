@@ -34,11 +34,51 @@ export const NeuronPlayground = () => {
 
   return (
     <Card className="p-8 border-border bg-card/50 backdrop-blur">
-      <div className="mb-8">
-        <h3 className="text-2xl font-bold mb-2">Single Neuron Playground</h3>
+      <div className="mb-8 space-y-4">
+        <h3 className="text-2xl font-bold">Single Neuron Playground</h3>
         <p className="text-muted-foreground">
-          Adjust inputs, weights, bias, and activation function to see how a neuron processes information
+          Explore how a single artificial neuron processes information by adjusting its parameters
         </p>
+        
+        <div className="p-4 bg-primary/10 rounded-lg border border-primary/30 space-y-3">
+          <h4 className="text-sm font-semibold text-primary">Understanding the Components:</h4>
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>
+              <strong className="text-foreground">Inputs (I1, I2):</strong> The raw data fed into the neuron. 
+              In real applications, these could be pixel values, sensor readings, or any numerical data.
+            </p>
+            <p>
+              <strong className="text-foreground">Weights (W1, W2):</strong> These determine how important each input is. 
+              Positive weights amplify the signal, negative weights suppress it. During training, the network adjusts these to learn patterns.
+            </p>
+            <p>
+              <strong className="text-foreground">Bias (b):</strong> Acts as an offset or threshold. 
+              It allows the neuron to activate even when inputs are zero, giving the network more flexibility to fit complex patterns.
+            </p>
+            <p>
+              <strong className="text-foreground">Weighted Sum (Σ + b):</strong> The neuron first calculates: (Input1 × Weight1) + (Input2 × Weight2) + Bias. 
+              This is the linear combination of inputs.
+            </p>
+            <p>
+              <strong className="text-foreground">Activation Function:</strong> Transforms the weighted sum into the final output. 
+              Without it, neural networks would only be able to learn linear relationships (straight lines). 
+              Activation functions introduce non-linearity, enabling networks to learn complex patterns like curves, spirals, and decision boundaries.
+            </p>
+            <p>
+              <strong className="text-foreground">Output:</strong> The neuron's final prediction after applying the activation function. 
+              This becomes the input to the next layer in deeper networks.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-accent/10 rounded-lg border border-accent/30">
+          <h4 className="text-sm font-semibold text-accent mb-2">Activation Function Details:</h4>
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p><strong className="text-foreground">Sigmoid (0 to 1):</strong> Squashes values to a range of 0-1. Great for probabilities. Used historically but can suffer from vanishing gradients in deep networks.</p>
+            <p><strong className="text-foreground">ReLU (max(0, x)):</strong> Outputs the input if positive, else 0. Fast to compute and helps avoid vanishing gradients. Most popular in modern deep learning.</p>
+            <p><strong className="text-foreground">Tanh (-1 to 1):</strong> Similar to sigmoid but outputs from -1 to 1. Zero-centered, which can help with training convergence.</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Brain, Home, BookOpen, Sparkles, Info } from "lucide-react";
+import { Brain, Home, BookOpen, Sparkles, Info, TrendingUp } from "lucide-react";
 
 interface NavigationProps {
   activeSection: string;
@@ -11,6 +11,7 @@ export const Navigation = ({ activeSection, onNavigate }: NavigationProps) => {
     { id: "home", label: "Home", icon: Home },
     { id: "basics", label: "Basics", icon: Brain },
     { id: "simulations", label: "Simulations", icon: Sparkles },
+    { id: "backprop", label: "Training", icon: TrendingUp },
     { id: "learn", label: "Learn More", icon: BookOpen },
     { id: "about", label: "About AI", icon: Info },
   ];

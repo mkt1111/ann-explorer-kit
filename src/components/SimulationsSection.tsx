@@ -1,5 +1,6 @@
 import { NeuronPlayground } from "./simulations/NeuronPlayground";
 import { NetworkTrainer } from "./simulations/NetworkTrainer";
+import { CartPoleSimulation } from "./simulations/CartPoleSimulation";
 
 export const SimulationsSection = () => {
   return (
@@ -17,6 +18,7 @@ export const SimulationsSection = () => {
         <div className="space-y-12 max-w-7xl mx-auto">
           <NeuronPlayground />
           <NetworkTrainer />
+          <CartPoleSimulation />
         </div>
       </div>
     </section>
