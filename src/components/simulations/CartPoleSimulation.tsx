@@ -6,12 +6,16 @@ import { Play, Pause, RotateCcw } from "lucide-react";
 export const CartPoleSimulation = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingIterations, setTrainingIterations] = useState(100);
+  const [trainingProgress, setTrainingProgress] = useState(0);
   const [angle, setAngle] = useState(0);
   const [angularVelocity, setAngularVelocity] = useState(0);
   const [cartPosition, setCartPosition] = useState(200);
   const [cartVelocity, setCartVelocity] = useState(0);
   const [score, setScore] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [bestScore, setBestScore] = useState(0);
   const animationRef = useRef<number>();
   const mouseDownRef = useRef(false);
   const mouseXRef = useRef(0);
@@ -22,22 +26,126 @@ export const CartPoleSimulation = () => {
   const cartPositionRef = useRef(200);
   const cartVelocityRef = useRef(0);
 
-  // Neural network control system (uses a PD controller wrapped as a neural network)
-  const neuralNetworkDecision = (state: number[]) => {
+  // Neural network weights - will be trained
+  const [weights, setWeights] = useState({
+    w1: [0.1, 0.2, -0.1, 0.15],  // Input to hidden layer weights
+    w2: [0.5],                    // Hidden to output weight
+    bias1: [0, 0, 0, 0],          // Hidden layer biases
+    bias2: 0                      // Output bias
+  });
+
+  // Neural network forward pass
+  const neuralNetworkDecision = (state: number[], currentWeights = weights) => {
     const [angle, angularVelocity, cartPos, cartVel] = state;
     
-    // LQR-style gains that actually balance the pole
-    // These are what a trained neural network would converge to
-    const K1 = -70.0;  // Cart position
-    const K2 = -90.0;  // Cart velocity  
-    const K3 = 300.0;  // Pole angle (most important!)
-    const K4 = 70.0;   // Angular velocity
+    // Normalize inputs
+    const normalizedState = [
+      angle / (Math.PI / 3),           // Normalize angle
+      angularVelocity / 2,              // Normalize angular velocity
+      (cartPos - 200) / 200,            // Normalize position (-1 to 1)
+      cartVel / 5                       // Normalize velocity
+    ];
     
-    // Control law: u = K1*x + K2*x_dot + K3*theta + K4*theta_dot
-    const control = K1 * cartPos + K2 * cartVel + K3 * angle + K4 * angularVelocity;
+    // Hidden layer with tanh activation
+    const hidden = normalizedState.map((input, i) => 
+      Math.tanh(input * currentWeights.w1[i] + currentWeights.bias1[i])
+    );
     
-    // Clamp to [-1, 1]
-    return Math.max(-1, Math.min(1, control));
+    // Output layer - sum of hidden activations
+    const output = hidden.reduce((sum, h, i) => sum + h * currentWeights.w2[0], 0) + currentWeights.bias2;
+    
+    // Return value between -1 and 1
+    return Math.tanh(output);
+  };
+
+  // Training function using evolutionary strategy
+  const trainNetwork = async () => {
+    setIsTraining(true);
+    setTrainingProgress(0);
+    
+    let bestWeights = { ...weights };
+    let bestFitness = 0;
+    
+    for (let iteration = 0; iteration < trainingIterations; iteration++) {
+      // Generate candidate solutions by mutating current best
+      const candidates = [];
+      const learningRate = 0.5 * (1 - iteration / trainingIterations); // Decay learning rate
+      
+      for (let c = 0; c < 10; c++) {
+        const mutatedWeights = {
+          w1: bestWeights.w1.map(w => w + (Math.random() - 0.5) * learningRate),
+          w2: [bestWeights.w2[0] + (Math.random() - 0.5) * learningRate],
+          bias1: bestWeights.bias1.map(b => b + (Math.random() - 0.5) * learningRate),
+          bias2: bestWeights.bias2 + (Math.random() - 0.5) * learningRate
+        };
+        
+        // Evaluate this candidate
+        const fitness = evaluatePolicy(mutatedWeights);
+        candidates.push({ weights: mutatedWeights, fitness });
+      }
+      
+      // Keep best candidate
+      candidates.sort((a, b) => b.fitness - a.fitness);
+      if (candidates[0].fitness > bestFitness) {
+        bestFitness = candidates[0].fitness;
+        bestWeights = candidates[0].weights;
+      }
+      
+      setTrainingProgress(((iteration + 1) / trainingIterations) * 100);
+      
+      // Yield to UI
+      if (iteration % 10 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+    
+    setWeights(bestWeights);
+    setBestScore(Math.floor(bestFitness));
+    setIsTraining(false);
+  };
+
+  // Evaluate a policy by running a simulation episode
+  const evaluatePolicy = (testWeights: typeof weights): number => {
+    let simAngle = (Math.random() - 0.5) * 0.3;
+    let simAngularVel = 0;
+    let simCartPos = 200;
+    let simCartVel = 0;
+    let steps = 0;
+    const maxSteps = 1000;
+    
+    while (steps < maxSteps) {
+      const state = [simAngle, simAngularVel, (simCartPos - 200) / 200, simCartVel];
+      const decision = neuralNetworkDecision(state, testWeights);
+      const force = decision * 500;
+      
+      // Physics
+      const gravity = 9.81;
+      const massCart = 1.0;
+      const massPole = 0.1;
+      const length = 1.0;
+      const dt = 0.016;
+      const totalMass = massCart + massPole;
+      const poleMassLength = massPole * length;
+      
+      const temp = (force + poleMassLength * simAngularVel * simAngularVel * Math.sin(simAngle)) / totalMass;
+      const angularAccel = (gravity * Math.sin(simAngle) - Math.cos(simAngle) * temp) /
+        (length * (4.0 / 3.0 - (massPole * Math.cos(simAngle) * Math.cos(simAngle)) / totalMass));
+      const cartAccel = temp - (poleMassLength * angularAccel * Math.cos(simAngle)) / totalMass;
+      
+      simAngularVel += angularAccel * dt;
+      simAngle += simAngularVel * dt;
+      simCartVel += cartAccel * dt;
+      simCartPos += simCartVel * dt;
+      
+      // Check failure - canvas is 400px, cart is 40px wide
+      if (Math.abs(simAngle) > Math.PI / 3 || simCartPos < 20 || simCartPos > 380) {
+        break;
+      }
+      
+      steps++;
+    }
+    
+    return steps; // Fitness = how many steps it survived
   };
 
   const update = () => {
@@ -79,8 +187,7 @@ export const CartPoleSimulation = () => {
     const newCartVelocity = prevCartVelocity + cartAcceleration * dt;
     const newCartPosition = prevCartPosition + newCartVelocity * dt;
 
-    // Check failure conditions - cart edges should not exceed canvas bounds
-    // Canvas is 400px wide, cart is 40px wide (±20 from center)
+    // Check failure conditions - canvas is 400px, cart is 40px wide
     if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 20 || newCartPosition > 380) {
       setFailed(true);
       setIsRunning(false);
@@ -235,7 +342,7 @@ export const CartPoleSimulation = () => {
       <div className="mb-8 space-y-4">
         <h3 className="text-2xl font-bold">Cart-Pole Balance AI</h3>
         <p className="text-muted-foreground">
-          Watch a neural network balance a pole on a moving cart - a classic reinforcement learning problem
+          Train a neural network to balance a pole on a moving cart - a classic reinforcement learning problem
         </p>
         
         <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
@@ -247,19 +354,53 @@ export const CartPoleSimulation = () => {
             <strong className="text-foreground"> cart velocity</strong>.
           </p>
           <p className="text-xs text-muted-foreground">
-            Based on these inputs, the network decides whether to push the cart <strong className="text-primary">left</strong> or 
-            <strong className="text-primary"> right</strong> to keep the pole balanced. 
-            The colored arrow shows the force being applied by the AI in real-time.
+            First, <strong className="text-primary">train the network</strong> using evolutionary strategies. 
+            The AI tests different weight configurations and keeps the best performers. 
+            Then watch it balance the pole using what it learned!
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
+          {/* Training Controls */}
+          <div className="p-4 bg-accent/10 rounded-lg border border-accent/30 space-y-4">
+            <h4 className="text-sm font-semibold text-accent">Training Controls</h4>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Training Iterations:</label>
+              <input
+                type="number"
+                min="10"
+                max="500"
+                value={trainingIterations}
+                onChange={(e) => setTrainingIterations(parseInt(e.target.value) || 100)}
+                disabled={isTraining || isRunning}
+                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
+              />
+            </div>
+            <Button
+              onClick={trainNetwork}
+              disabled={isTraining || isRunning}
+              className="w-full gap-2"
+              variant="secondary"
+            >
+              {isTraining ? (
+                <>Training... {trainingProgress.toFixed(0)}%</>
+              ) : (
+                <>Train Network</>
+              )}
+            </Button>
+            {bestScore > 0 && (
+              <div className="text-xs text-muted-foreground text-center">
+                Best training score: <strong className="text-primary">{bestScore}</strong> steps
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-4">
             <Button
               onClick={() => setIsRunning(!isRunning)}
-              disabled={failed}
+              disabled={failed || isTraining}
               className="flex-1 gap-2"
             >
               {isRunning ? (
@@ -274,7 +415,7 @@ export const CartPoleSimulation = () => {
                 </>
               )}
             </Button>
-            <Button onClick={handleReset} variant="outline" className="gap-2">
+            <Button onClick={handleReset} variant="outline" className="gap-2" disabled={isTraining}>
               <RotateCcw className="w-4 h-4" />
               Reset
             </Button>
