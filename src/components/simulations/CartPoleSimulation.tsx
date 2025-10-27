@@ -16,17 +16,17 @@ export const CartPoleSimulation = () => {
   const mouseDownRef = useRef(false);
   const mouseXRef = useRef(0);
 
-  // Simple neural network weights (pre-trained-ish)
+  // Simple neural network weights (tuned for cart-pole balancing)
   const [weights] = useState({
-    w1: [0.3, 0.5, 0.4, 0.6],
-    w2: [-0.5, 0.4],
+    w1: [-1.2, -2.5, 0.8, -1.8], // More aggressive response to angle and angular velocity
+    w2: [3.5, 0.1],
   });
 
   const neuralNetworkDecision = (state: number[]) => {
-    // Input layer to hidden layer
+    // Input layer to hidden layer with ReLU activation
     const hidden = state.map((input, i) => Math.max(0, input * weights.w1[i])).reduce((a, b) => a + b, 0);
     
-    // Hidden layer to output
+    // Hidden layer to output with tanh
     const output = Math.tanh(hidden * weights.w2[0] + weights.w2[1]);
     
     return output; // Negative = push left, Positive = push right
@@ -35,56 +35,74 @@ export const CartPoleSimulation = () => {
   const update = () => {
     if (failed) return;
 
-    // Neural network makes decision
-    const state = [angle, angularVelocity, (cartPosition - 200) / 200, cartVelocity];
-    const decision = neuralNetworkDecision(state);
-    
-    // Apply force based on network decision
-    const force = decision * 15;
+    setAngle(prevAngle => {
+      setAngularVelocity(prevAngularVelocity => {
+        setCartPosition(prevCartPosition => {
+          setCartVelocity(prevCartVelocity => {
+            // Neural network makes decision
+            const state = [prevAngle, prevAngularVelocity, (prevCartPosition - 200) / 200, prevCartVelocity];
+            const decision = neuralNetworkDecision(state);
+            
+            // Apply force based on network decision
+            const force = decision * 20;
 
-    // Physics simulation
-    const gravity = 9.81;
-    const massCart = 1.0;
-    const massPole = 0.1;
-    const length = 0.5;
-    const dt = 0.02;
+            // Physics simulation
+            const gravity = 9.81;
+            const massCart = 1.0;
+            const massPole = 0.1;
+            const length = 0.5;
+            const dt = 0.02;
 
-    const totalMass = massCart + massPole;
-    const poleMassLength = massPole * length;
+            const totalMass = massCart + massPole;
+            const poleMassLength = massPole * length;
 
-    const temp = (force + poleMassLength * angularVelocity * angularVelocity * Math.sin(angle)) / totalMass;
-    const angularAcceleration =
-      (gravity * Math.sin(angle) - Math.cos(angle) * temp) /
-      (length * (4.0 / 3.0 - (massPole * Math.cos(angle) * Math.cos(angle)) / totalMass));
-    
-    const cartAcceleration = temp - (poleMassLength * angularAcceleration * Math.cos(angle)) / totalMass;
+            const temp = (force + poleMassLength * prevAngularVelocity * prevAngularVelocity * Math.sin(prevAngle)) / totalMass;
+            const angularAcceleration =
+              (gravity * Math.sin(prevAngle) - Math.cos(prevAngle) * temp) /
+              (length * (4.0 / 3.0 - (massPole * Math.cos(prevAngle) * Math.cos(prevAngle)) / totalMass));
+            
+            const cartAcceleration = temp - (poleMassLength * angularAcceleration * Math.cos(prevAngle)) / totalMass;
 
-    // Update velocities and positions
-    const newAngularVelocity = angularVelocity + angularAcceleration * dt;
-    const newAngle = angle + newAngularVelocity * dt;
-    const newCartVelocity = cartVelocity + cartAcceleration * dt;
-    const newCartPosition = cartPosition + newCartVelocity * dt;
+            // Update velocities and positions
+            const newAngularVelocity = prevAngularVelocity + angularAcceleration * dt;
+            const newAngle = prevAngle + newAngularVelocity * dt;
+            const newCartVelocity = prevCartVelocity + cartAcceleration * dt;
+            const newCartPosition = prevCartPosition + newCartVelocity * dt;
 
-    // Check failure conditions
-    if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 50 || newCartPosition > 350) {
-      setFailed(true);
-      setIsRunning(false);
-      return;
-    }
+            // Check failure conditions
+            if (Math.abs(newAngle) > Math.PI / 3 || newCartPosition < 50 || newCartPosition > 350) {
+              setFailed(true);
+              setIsRunning(false);
+              return prevCartVelocity;
+            }
 
-    setAngle(newAngle);
-    setAngularVelocity(newAngularVelocity);
-    setCartPosition(newCartPosition);
-    setCartVelocity(newCartVelocity);
-    setScore(s => s + 1);
+            // Update other states
+            setAngle(newAngle);
+            setAngularVelocity(newAngularVelocity);
+            setCartPosition(newCartPosition);
+            setScore(s => s + 1);
+            
+            return newCartVelocity;
+          });
+          return prevCartPosition;
+        });
+        return prevAngularVelocity;
+      });
+      return prevAngle;
+    });
   };
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
     if (isRunning && !failed) {
-      const interval = setInterval(update, 20);
-      return () => clearInterval(interval);
+      intervalId = setInterval(() => {
+        update();
+      }, 20);
     }
-  }, [isRunning, failed, angle, angularVelocity, cartPosition, cartVelocity]);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isRunning, failed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

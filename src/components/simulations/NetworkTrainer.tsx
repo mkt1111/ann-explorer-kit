@@ -66,7 +66,13 @@ export const NetworkTrainer = () => {
   const [epoch, setEpoch] = useState(0);
   const [loss, setLoss] = useState(1.0);
   const [learningRate, setLearningRate] = useState(0.1);
-  const [weights, setWeights] = useState([0.5, 0.5, 0.5]);
+  const [weights, setWeights] = useState({
+    hidden: [
+      [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+      [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+    ],
+    output: [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+  });
   const [operation, setOperation] = useState<Operation>("XOR");
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -74,25 +80,53 @@ export const NetworkTrainer = () => {
 
   const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-  const forward = (input: number[], w: number[]) => {
-    const sum = input[0] * w[0] + input[1] * w[1] + w[2];
-    return sigmoid(sum);
+  const forward = (input: number[], w: typeof weights) => {
+    // Hidden layer (2 neurons)
+    const hidden = w.hidden.map(neuronWeights => {
+      const sum = input[0] * neuronWeights[0] + input[1] * neuronWeights[1] + neuronWeights[2];
+      return sigmoid(sum);
+    });
+
+    // Output layer
+    const outputSum = hidden[0] * w.output[0] + hidden[1] * w.output[1] + w.output[2];
+    return sigmoid(outputSum);
   };
 
   const trainStep = () => {
     let totalLoss = 0;
-    const newWeights = [...weights];
+    const newWeights = {
+      hidden: weights.hidden.map(h => [...h]),
+      output: [...weights.output],
+    };
 
     trainingData.forEach(({ input, target }) => {
-      const prediction = forward(input, newWeights);
+      // Forward pass
+      const hidden = newWeights.hidden.map(neuronWeights => {
+        const sum = input[0] * neuronWeights[0] + input[1] * neuronWeights[1] + neuronWeights[2];
+        return sigmoid(sum);
+      });
+
+      const outputSum = hidden[0] * newWeights.output[0] + hidden[1] * newWeights.output[1] + newWeights.output[2];
+      const prediction = sigmoid(outputSum);
+
       const error = target - prediction;
       totalLoss += Math.abs(error);
 
-      // Simple gradient descent update
-      const gradient = error * prediction * (1 - prediction);
-      newWeights[0] += learningRate * gradient * input[0];
-      newWeights[1] += learningRate * gradient * input[1];
-      newWeights[2] += learningRate * gradient;
+      // Backpropagation
+      const outputGradient = error * prediction * (1 - prediction);
+
+      // Update output weights
+      newWeights.output[0] += learningRate * outputGradient * hidden[0];
+      newWeights.output[1] += learningRate * outputGradient * hidden[1];
+      newWeights.output[2] += learningRate * outputGradient;
+
+      // Update hidden weights
+      newWeights.hidden.forEach((neuronWeights, i) => {
+        const hiddenGradient = outputGradient * newWeights.output[i] * hidden[i] * (1 - hidden[i]);
+        neuronWeights[0] += learningRate * hiddenGradient * input[0];
+        neuronWeights[1] += learningRate * hiddenGradient * input[1];
+        neuronWeights[2] += learningRate * hiddenGradient;
+      });
     });
 
     setWeights(newWeights);
@@ -180,7 +214,13 @@ export const NetworkTrainer = () => {
     setIsTraining(false);
     setEpoch(0);
     setLoss(1.0);
-    setWeights([Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5]);
+    setWeights({
+      hidden: [
+        [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+        [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+      ],
+      output: [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+    });
   };
 
   return (
