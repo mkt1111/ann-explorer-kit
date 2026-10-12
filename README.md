@@ -8,7 +8,7 @@ An educational site introducing artificial neural networks, with small in-browse
 - Single-neuron playground with selectable activation functions (sigmoid, ReLU, tanh)
 - Network training visualizer for simple logic problems (AND, OR, XOR)
 - Cart-pole balancing simulation
-- Background section on AI applications and further-reading links
+- Background section on the history and real-world applications of neural networks
 
 ## Tech stack
 
